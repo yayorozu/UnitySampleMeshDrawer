@@ -1,23 +1,22 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
 namespace DrawMesh
 {
-	public class Drawer : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler
+	public class Drawer : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler, IPointerDownHandler, IPointerUpHandler
 	{
 		[SerializeField]
-		private float _width;
+		private float _width = 0f;
 
 		[SerializeField]
-		private Camera _targetCamera;
+		private Camera _targetCamera = null;
 
 		[SerializeField]
-		private Color _color;
+		private Color _color = Color.white;
 
 		[SerializeField]
-		private MeshFilter _meshFilter;
+		private MeshFilter _meshFilter = null;
 
 		private Vector2 _prevPos;
 		private RectTransform _rect;
@@ -34,26 +33,45 @@ namespace DrawMesh
 		/// </summary>
 		private bool _isNew;
 
+		public void OnPointerDown(PointerEventData eventData)
+		{
+			if (_isNew)
+				return;
+
+			_isNew = true;
+			_prevPos = eventData.position;
+		}
+
 		public void OnDrag(PointerEventData eventData)
 		{
 			var pos = eventData.position;
+
 			// 一定距離ドラッグしたら描画する
-			if ((_prevPos - pos).magnitude > 2f)
-			{
-				CreateMesh(_prevPos, pos, _isNew);
-				_prevPos = eventData.position;
-				_isNew = false;
-			}
+			if ((_prevPos - pos).magnitude < 2f)
+				return;
+
+			CreateMesh(_prevPos, pos, _isNew);
+			_prevPos = eventData.position;
+			_isNew = false;
 		}
 
 		public void OnBeginDrag(PointerEventData eventData)
 		{
+			if (_isNew)
+				return;
+
 			_isNew = true;
 			_prevPos = eventData.position;
 		}
 
 		public void OnEndDrag(PointerEventData eventData)
 		{
+			_isNew = false;
+		}
+
+		public void OnPointerUp(PointerEventData eventData)
+		{
+			_isNew = false;
 		}
 
 		/// <summary>
