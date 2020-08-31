@@ -1,13 +1,14 @@
 ﻿using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace DrawMesh
 {
 	public class Drawer : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler, IPointerDownHandler, IPointerUpHandler
 	{
 		[SerializeField]
-		private float _width = 0f;
+		private MeshFilter _meshFilter = null;
 
 		[SerializeField]
 		private Camera _targetCamera = null;
@@ -16,22 +17,41 @@ namespace DrawMesh
 		private Color _color = Color.white;
 
 		[SerializeField]
-		private MeshFilter _meshFilter = null;
+		private float _width = 0f;
+
+		[SerializeField]
+		private float _limit = 100f;
+
+		[SerializeField]
+		private RectTransform _limitRect;
 
 		private Vector2 _prevPos;
 		private RectTransform _rect;
+		private float _remainDraw;
+		private float _imageWidth;
 
 		private void Awake()
 		{
 			_rect = transform.root as RectTransform;
 			if (_meshFilter.sharedMesh == null)
 				_meshFilter.sharedMesh = new Mesh();
+
+			_remainDraw = _limit;
+			_imageWidth = _limitRect.sizeDelta.x;
 		}
 
 		/// <summary>
 		/// 最初に作る場合は4頂点必要なので判定用
 		/// </summary>
 		private bool _isNew;
+
+		private void SetLimitGauge(float diff)
+		{
+			_remainDraw -= diff;
+			var size = _limitRect.sizeDelta;
+			size.x = _remainDraw / _limit * _imageWidth;
+			_limitRect.sizeDelta = size;
+		}
 
 		public void OnPointerDown(PointerEventData eventData)
 		{
@@ -44,12 +64,24 @@ namespace DrawMesh
 
 		public void OnDrag(PointerEventData eventData)
 		{
-			var pos = eventData.position;
-
-			// 一定距離ドラッグしたら描画する
-			if ((_prevPos - pos).magnitude < 2f)
+			if (_remainDraw <= 0)
 				return;
 
+			var pos = eventData.position;
+
+			var magnitude = (_prevPos - pos).magnitude;
+			if (magnitude >= _remainDraw)
+			{
+				SetLimitGauge(_remainDraw);
+				CreateMesh(_prevPos, pos, _isNew);
+				return;
+			}
+
+			// 一定距離ドラッグしたら描画する
+			if (magnitude < 2f)
+				return;
+
+			SetLimitGauge(magnitude);
 			CreateMesh(_prevPos, pos, _isNew);
 			_prevPos = eventData.position;
 			_isNew = false;
